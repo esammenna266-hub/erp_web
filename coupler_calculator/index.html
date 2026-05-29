@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Branch Line Coupler for CST</title>
+    <meta name="description" content="Calculate physical dimensions (W, L) for CST Microwave Studio.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="background-effects">
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+    </div>
+
+    <main class="container">
+        <header class="header">
+            <h1>CST<span>Coupler</span></h1>
+            <p>Physical Dimensions Calculator for CST Microwave Studio</p>
+        </header>
+
+        <div class="calculator-grid">
+            <!-- Inputs Section -->
+            <section class="inputs-section glass-panel">
+                <h2>Parameters</h2>
+                
+                <div class="input-group">
+                    <label for="er">Dielectric Constant (Er)</label>
+                    <input type="number" id="er" value="2.2" step="0.1">
+                </div>
+
+                <div class="input-group">
+                    <label for="h">Substrate Height (h) [mm]</label>
+                    <input type="number" id="h" value="0.787" step="0.001" placeholder="e.g. 0.787 for Rogers 5880">
+                </div>
+
+                <div class="input-group">
+                    <label for="z0">Input Impedance (Z₀) [Ω]</label>
+                    <input type="number" id="z0" value="50" step="1">
+                </div>
+
+                <div class="input-group">
+                    <label for="zl">Load Impedance (Zₗ) [Ω]</label>
+                    <input type="number" id="zl" value="200" step="1">
+                </div>
+
+                <div class="input-group">
+                    <label for="freq">Frequency (f) [GHz]</label>
+                    <input type="number" id="freq" value="12.1" step="0.1">
+                </div>
+
+                <button id="calculateBtn" class="btn-primary">
+                    <span>Calculate for CST</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section glass-panel">
+                <h2>CST Dimensions (Microstrip)</h2>
+                
+                <div class="diagram-container">
+                    <div class="coupler-diagram">
+                        <div class="port p1">Port 1</div>
+                        <div class="port p2">Port 2</div>
+                        <div class="port p3">Port 3</div>
+                        <div class="port p4">Port 4</div>
+                        
+                        <div class="line series-top" title="Series Branch">Z<sub>s</sub></div>
+                        <div class="line series-bottom" title="Series Branch">Z<sub>s</sub></div>
+                        <div class="line shunt-left" title="Shunt Branch Input">Z<sub>p1</sub></div>
+                        <div class="line shunt-right" title="Shunt Branch Output">Z<sub>p2</sub></div>
+                    </div>
+                </div>
+
+                <div class="results-grid" id="resultsGrid">
+                    <!-- Series Branch -->
+                    <div class="result-card cst-card">
+                        <span class="result-label">Series Branch (Zₛ)</span>
+                        <span class="result-value" id="res-zs">-- Ω</span>
+                        <div class="cst-dims">
+                            <div>W: <span class="highlight-dim" id="w-zs">--</span> mm</div>
+                            <div>L: <span class="highlight-dim" id="l-zs">--</span> mm</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Shunt Input -->
+                    <div class="result-card cst-card">
+                        <span class="result-label">Shunt Input (Zₚ₁)</span>
+                        <span class="result-value" id="res-zp1">-- Ω</span>
+                        <div class="cst-dims">
+                            <div>W: <span class="highlight-dim" id="w-zp1">--</span> mm</div>
+                            <div>L: <span class="highlight-dim" id="l-zp1">--</span> mm</div>
+                        </div>
+                    </div>
+
+                    <!-- Shunt Output -->
+                    <div class="result-card cst-card">
+                        <span class="result-label">Shunt Output (Zₚ₂)</span>
+                        <span class="result-value" id="res-zp2">-- Ω</span>
+                        <div class="cst-dims">
+                            <div>W: <span class="highlight-dim" id="w-zp2">--</span> mm</div>
+                            <div>L: <span class="highlight-dim" id="l-zp2">--</span> mm</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
