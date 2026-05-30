@@ -182,14 +182,14 @@ export default function LoginPage() {
               />
             </div>
 
-            <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+            <div style={{ marginBottom: 16 }}>
               <button
                 id="login-submit"
                 onClick={handleLogin}
-                type="button"
+                type="submit"
                 disabled={loading}
                 className="btn-primary"
-                style={{ flex: 1.5, padding: '13px', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, position: 'relative' }}
+                style={{ width: '100%', padding: '13px', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, position: 'relative' }}
               >
                 {loading ? (
                   <>
@@ -204,20 +204,6 @@ export default function LoginPage() {
                     </svg>
                   </>
                 )}
-              </button>
-              
-              <button
-                type="button"
-                onClick={handleSignUp}
-                disabled={loading}
-                style={{
-                  flex: 1, padding: '13px', fontSize: 13, background: 'rgba(255,255,255,0.05)', 
-                  border: '1px solid var(--border)', borderRadius: 'var(--radius)', 
-                  color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', 
-                  alignItems: 'center', justifyContent: 'center'
-                }}
-              >
-                إنشاء حساب
               </button>
             </div>
 
