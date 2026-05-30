@@ -68,14 +68,41 @@ export default function EmployeesPage() {
     if (!form.name.trim() || !form.email.trim()) { setError('الاسم والبريد مطلوبان'); return }
     setSaving(true)
     setError('')
-    const payload = { name: form.name.trim(), email: form.email.trim(), role: form.role, branch: form.branch, phone: form.phone, salary: form.salary ? parseFloat(form.salary) : null }
+    const targetEmail = form.email.trim().toLowerCase()
+    const payload = { name: form.name.trim(), email: targetEmail, role: form.role, branch: form.branch, phone: form.phone, salary: form.salary ? parseFloat(form.salary) : null }
 
     if (editingId) {
+      // Get old email first to sync update
+      const { data: oldEmp } = await supabase.from('employees').select('email').eq('id', editingId).single()
+      
       const { error } = await supabase.from('employees').update(payload).eq('id', editingId)
       if (error) { setError(error.message); setSaving(false); return }
+
+      // Update matching profile if exists
+      if (oldEmp) {
+        await supabase.from('profiles').update({ email: targetEmail, role: form.role }).eq('email', oldEmp.email)
+      }
     } else {
       const { error } = await supabase.from('employees').insert(payload)
       if (error) { setError(error.message); setSaving(false); return }
+
+      // Get current logged-in user's tenant_id to assign it to employee
+      const { data: authData } = await supabase.auth.getUser()
+      if (authData?.user) {
+        const { data: currentProfile } = await supabase.from('profiles').select('tenant_id').eq('email', authData.user.email).single()
+        const activeTenantId = currentProfile?.tenant_id
+
+        // Create profile so they can log in
+        const { data: existingProfile } = await supabase.from('profiles').select('id').eq('email', targetEmail).single()
+        if (!existingProfile) {
+          await supabase.from('profiles').insert({
+            email: targetEmail,
+            tenant_id: activeTenantId,
+            role: form.role,
+            password: 'demo' // default password is 'demo'
+          })
+        }
+      }
     }
     setSaving(false)
     setShowModal(false)
@@ -84,6 +111,13 @@ export default function EmployeesPage() {
 
   async function handleDelete(id: string) {
     if (!confirm('هل أنت متأكد من حذف هذا الموظف؟')) return
+    
+    // Delete profile first
+    const { data: empToDelete } = await supabase.from('employees').select('email').eq('id', id).single()
+    if (empToDelete) {
+      await supabase.from('profiles').delete().eq('email', empToDelete.email)
+    }
+
     await supabase.from('employees').delete().eq('id', id)
     load()
   }
