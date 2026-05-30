@@ -25,6 +25,7 @@ export default function SuperAdminPage() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [newCompanyName, setNewCompanyName] = useState('')
   const [newOwnerEmail, setNewOwnerEmail] = useState('')
+  const [newOwnerPassword, setNewOwnerPassword] = useState('')
   const [addingError, setAddingError] = useState('')
   const [addingSaving, setAddingSaving] = useState(false)
 
@@ -90,6 +91,10 @@ export default function SuperAdminPage() {
       setAddingError('يرجى إدخال بريد إلكتروني صحيح للمالك')
       return
     }
+    if (!newOwnerPassword || newOwnerPassword.length < 6) {
+      setAddingError('يرجى إدخال كلمة مرور من 6 خانات على الأقل')
+      return
+    }
 
     setAddingSaving(true)
     setAddingError('')
@@ -115,7 +120,8 @@ export default function SuperAdminPage() {
       id: 'u_' + Math.random().toString(36).substr(2, 9),
       email: newOwnerEmail.trim().toLowerCase(),
       tenant_id: tenantId,
-      role: 'admin'
+      role: 'admin',
+      password: newOwnerPassword
     })
 
     if (profileErr) {
@@ -129,6 +135,7 @@ export default function SuperAdminPage() {
     // Clean up state
     setNewCompanyName('')
     setNewOwnerEmail('')
+    setNewOwnerPassword('')
     setAddingSaving(false)
     setShowAddModal(false)
     
@@ -386,8 +393,22 @@ export default function SuperAdminPage() {
                     style={{ padding: '10px 12px' }} 
                     required
                   />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>كلمة المرور لحساب المالك</label>
+                  <input 
+                    id="new-owner-password"
+                    type="password" 
+                    placeholder="أدخل 6 رموز على الأقل" 
+                    value={newOwnerPassword} 
+                    onChange={e => setNewOwnerPassword(e.target.value)} 
+                    className="input-field" 
+                    style={{ padding: '10px 12px' }} 
+                    required
+                  />
                   <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                    سيتم إنشاء حساب مشرف تلقائياً بهذا البريد لعزل بياناته عن باقي المشتركين.
+                    سيتم إنشاء حساب مشرف تلقائياً بهذا البريد وكلمة المرور لعزل بياناته عن باقي المشتركين.
                   </p>
                 </div>
               </div>

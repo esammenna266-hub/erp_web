@@ -14,10 +14,10 @@ const INITIAL_MOCK_DATA: Record<string, any[]> = {
     { id: "t3", name: "مكتبة النجاح", owner_email: "library@admin.com", status: "suspended", created_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString() }
   ],
   profiles: [
-    { id: "u_super", email: "super@admin.com", tenant_id: null, role: "super_admin" },
-    { id: "u_c1", email: "menna@admin.com", tenant_id: "t1", role: "admin" },
-    { id: "u_c2", email: "city@admin.com", tenant_id: "t2", role: "admin" },
-    { id: "u_c3", email: "library@admin.com", tenant_id: "t3", role: "admin" }
+    { id: "u_super", email: "super@admin.com", tenant_id: null, role: "super_admin", password: "demo" },
+    { id: "u_c1", email: "menna@admin.com", tenant_id: "t1", role: "admin", password: "demo" },
+    { id: "u_c2", email: "city@admin.com", tenant_id: "t2", role: "admin", password: "demo" },
+    { id: "u_c3", email: "library@admin.com", tenant_id: "t3", role: "admin", password: "demo" }
   ],
   branches: [
     {
@@ -490,7 +490,8 @@ const mockAuth = {
           id: 'u_' + Math.random().toString(36).substr(2, 9),
           email: email,
           tenant_id: tenantId,
-          role: 'admin'
+          role: 'admin',
+          password: password
         }
         
         const tenants = getTableData('tenants')
@@ -502,6 +503,12 @@ const mockAuth = {
         setTableData('profiles', profiles)
         
         matchingProfile = newProfile
+      } else {
+        // Validate password
+        const savedPassword = matchingProfile.password || 'demo'
+        if (savedPassword !== password) {
+          return { data: { user: null, session: null }, error: { message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' } }
+        }
       }
 
       const mockUser = { id: matchingProfile.id, email: email }
