@@ -25,9 +25,10 @@ export default function EmployeesPage() {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
   const [showModal, setShowModal] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', role: 'employee', branch: '', phone: '', salary: '' })
+  const [form, setForm] = useState({ name: '', email: '', role: 'employee', branch: '', phone: '', salary: '', password: '' })
   const [error, setError] = useState('')
   const [branches, setBranches] = useState<{id:string, name:string}[]>([])
 
@@ -51,16 +52,24 @@ export default function EmployeesPage() {
 
   function openAddModal() {
     setEditingId(null)
-    setForm({ name: '', email: '', role: 'employee', branch: '', phone: '', salary: '' })
+    setForm({ name: '', email: '', role: 'employee', branch: '', phone: '', salary: '', password: 'demo' })
     setError('')
+    setShowPassword(false)
     setShowModal(true)
   }
 
-  function openEditModal(emp: Employee) {
+  async function openEditModal(emp: Employee) {
     setEditingId(emp.id)
-    setForm({ name: emp.name ?? '', email: emp.email ?? '', role: emp.role ?? 'employee', branch: emp.branch ?? '', phone: emp.phone ?? '', salary: emp.salary?.toString() ?? '' })
+    setForm({ name: emp.name ?? '', email: emp.email ?? '', role: emp.role ?? 'employee', branch: emp.branch ?? '', phone: emp.phone ?? '', salary: emp.salary?.toString() ?? '', password: 'demo' })
     setError('')
+    setShowPassword(false)
     setShowModal(true)
+
+    // Fetch the password from profiles
+    const { data: profile } = await supabase.from('profiles').select('password').eq('email', emp.email).single()
+    if (profile && profile.password) {
+      setForm(f => ({ ...f, password: profile.password }))
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -78,9 +87,30 @@ export default function EmployeesPage() {
       const { error } = await supabase.from('employees').update(payload).eq('id', editingId)
       if (error) { setError(error.message); setSaving(false); return }
 
-      // Update matching profile if exists
+      // Update matching profile if exists or create if not
       if (oldEmp) {
-        await supabase.from('profiles').update({ email: targetEmail, role: form.role }).eq('email', oldEmp.email)
+        const { data: profile } = await supabase.from('profiles').select('id').eq('email', oldEmp.email).single()
+        if (profile) {
+          await supabase.from('profiles').update({
+            email: targetEmail,
+            role: form.role,
+            password: form.password || 'demo'
+          }).eq('email', oldEmp.email)
+        } else {
+          // If no profile existed, create one
+          const { data: authData } = await supabase.auth.getUser()
+          let activeTenantId = null
+          if (authData?.user) {
+            const { data: currentProfile } = await supabase.from('profiles').select('tenant_id').eq('email', authData.user.email).single()
+            activeTenantId = currentProfile?.tenant_id
+          }
+          await supabase.from('profiles').insert({
+            email: targetEmail,
+            tenant_id: activeTenantId,
+            role: form.role,
+            password: form.password || 'demo'
+          })
+        }
       }
     } else {
       const { error } = await supabase.from('employees').insert(payload)
@@ -99,8 +129,15 @@ export default function EmployeesPage() {
             email: targetEmail,
             tenant_id: activeTenantId,
             role: form.role,
-            password: 'demo' // default password is 'demo'
+            password: form.password || 'demo'
           })
+        } else {
+          // If it exists, update it with tenant_id, role, and password
+          await supabase.from('profiles').update({
+            tenant_id: activeTenantId,
+            role: form.role,
+            password: form.password || 'demo'
+          }).eq('email', targetEmail)
         }
       }
     }
@@ -254,6 +291,82 @@ export default function EmployeesPage() {
                   </div>
                 ))}
               </div>
+
+              <div style={{ marginTop: 14 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>كلمة المرور</label>
+                <div style={{ position: 'relative', display: 'flex', gap: 8 }}>
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <input
+                      id="emp-password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="كلمة مرور حساب الموظف"
+                      value={form.password}
+                      onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                      className="input-field"
+                      style={{ padding: '10px 40px 10px 12px' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: 12,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 0
+                      }}
+                    >
+                      {showPassword ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                          <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+                      let randPass = ''
+                      for (let i = 0; i < 8; i++) {
+                        randPass += chars.charAt(Math.floor(Math.random() * chars.length))
+                      }
+                      setForm(f => ({ ...f, password: randPass }))
+                      setShowPassword(true)
+                    }}
+                    style={{
+                      padding: '10px 14px',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius)',
+                      color: 'var(--text-primary)',
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      fontWeight: 500,
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseOver={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                    onMouseOut={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                  >
+                    توليد كلمة مرور
+                  </button>
+                </div>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>الدور</label>
