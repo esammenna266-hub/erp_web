@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -107,6 +107,39 @@ const superNavItems: NavItem[] = [
   }
 ]
 
+const ROLE_PERMISSIONS: Record<string, string[]> = {
+  super_admin: [
+    '/dashboard',
+    '/dashboard/pos',
+    '/dashboard/employees',
+    '/dashboard/branches',
+    '/dashboard/sales',
+    '/dashboard/attendance',
+    '/dashboard/products',
+    '/dashboard/super-admin'
+  ],
+  admin: [
+    '/dashboard',
+    '/dashboard/pos',
+    '/dashboard/employees',
+    '/dashboard/branches',
+    '/dashboard/sales',
+    '/dashboard/attendance',
+    '/dashboard/products'
+  ],
+  supervisor: [
+    '/dashboard',
+    '/dashboard/pos',
+    '/dashboard/sales',
+    '/dashboard/attendance',
+    '/dashboard/products'
+  ],
+  employee: [
+    '/dashboard/pos',
+    '/dashboard/attendance'
+  ]
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -125,17 +158,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         
         // Fetch role from profile
         const { data: profile } = await supabase.from('profiles').select('*').eq('email', data.user.email).single()
-        setRole(profile?.role || 'employee')
+        const userRole = profile?.role || 'employee'
+        setRole(userRole)
         
         // Redirect if super admin and not impersonating and not in super admin pages
         const isImpersonating = !!localStorage.getItem('impersonated_tenant_id')
-        if (profile?.role === 'super_admin' && !isImpersonating && !pathname.startsWith('/dashboard/super-admin')) {
+        if (userRole === 'super_admin' && !isImpersonating && !pathname.startsWith('/dashboard/super-admin')) {
           router.push('/dashboard/super-admin')
+          return
+        }
+
+        // Check page permissions
+        const allowedRoutes = ROLE_PERMISSIONS[userRole] || []
+        const isAllowed = allowedRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
+        
+        if (!isAllowed) {
+          if (allowedRoutes.length > 0) {
+            router.push(allowedRoutes[0])
+          } else {
+            router.push('/')
+          }
         }
       }
       setLoading(false)
     })
   }, [router, pathname])
+
+  const isAllowed = useMemo(() => {
+    if (loading) return false
+    const userRole = role || 'employee'
+    const allowed = ROLE_PERMISSIONS[userRole] || []
+    return allowed.some(route => pathname === route || pathname.startsWith(route + '/'))
+  }, [role, pathname, loading])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -216,7 +270,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', padding: '4px 8px 8px', display: sidebarOpen ? 'block' : 'none' }}>
             القائمة الرئيسية
           </div>
-          {((role === 'super_admin' && !impersonatedCompany) ? superNavItems : navItems).map((item) => {
+          {((role === 'super_admin' && !impersonatedCompany) ? superNavItems : navItems.filter(item => {
+            const allowedRoutes = ROLE_PERMISSIONS[role] || []
+            return allowedRoutes.includes(item.href)
+          })).map((item) => {
             const isActive = pathname === item.href
             return (
               <Link key={item.href} href={item.href} className={`nav-item ${isActive ? 'active' : ''}`} style={{ marginBottom: 4, justifyContent: sidebarOpen ? 'flex-start' : 'center' }}>
@@ -343,7 +400,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Page content */}
         <main style={{ flex: 1, padding: '28px 28px', overflowY: 'auto' }}>
-          {children}
+          {isAllowed ? children : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 400 }}>
+              <div style={{ textAlign: 'center' }}>
+                <div className="spinner" style={{ width: 40, height: 40, margin: '0 auto 16px' }} />
+                <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>جاري التحقق من الصلاحيات...</p>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>
