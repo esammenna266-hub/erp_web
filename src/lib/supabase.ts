@@ -240,6 +240,12 @@ const INITIAL_MOCK_DATA: Record<string, any[]> = {
     {id: "a6", tenant_id: "t1", employee_name: "عمرو حسن", branch: "فرع القاهرة - الرئيسي", date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0], check_in: "08:50", check_out: "17:00", status: "present", notes: ""},
     {id: "a7", tenant_id: "t1", employee_name: "سارة علي", branch: "فرع الإسكندرية", date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0], check_in: "09:00", check_out: "17:00", status: "present", notes: ""},
     {id: "a8", tenant_id: "t2", employee_name: "كريم سعد", branch: "فرع الجيزة", date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0], check_in: "08:55", check_out: "17:00", status: "present", notes: ""}
+  ],
+  inventory_movements: [
+    { id: "im1", tenant_id: "t1", product_id: "p1", product_name: "شاشة سامسونج 55 بوصة Smart 4K", type: "inbound", quantity: 12, branch: "فرع القاهرة - الرئيسي", notes: "رصيد افتتاحي للمخزن", created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() },
+    { id: "im2", tenant_id: "t1", product_id: "p2", product_name: "لابتوب ديل Vostro Core i7 16GB", type: "inbound", quantity: 4, branch: "فرع الإسكندرية", notes: "رصيد افتتاحي للمخزن", created_at: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString() },
+    { id: "im3", tenant_id: "t1", product_id: "p3", product_name: "بن قهوة اسبريسو برازيلي 1 كجم", type: "inbound", quantity: 30, branch: "فرع القاهرة - الرئيسي", notes: "توريد من المورد الأساسي", created_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString() },
+    { id: "im4", tenant_id: "t1", product_id: "p3", product_name: "بن قهوة اسبريسو برازيلي 1 كجم", type: "outbound", quantity: 5.5, branch: "فرع القاهرة - الرئيسي", notes: "هالك / تالف بسبب سوء التخزين", created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() }
   ]
 }
 
@@ -352,7 +358,7 @@ class MockQueryBuilder {
       let filtered = [...data]
       
       // Auto-filter tenant-specific data
-      const tenantSpecificTables = ['branches', 'employees', 'products', 'sales', 'attendance']
+      const tenantSpecificTables = ['branches', 'employees', 'products', 'sales', 'attendance', 'inventory_movements']
       if (tenantSpecificTables.includes(this.table)) {
         const activeTenantId = getActiveTenantId()
         if (activeTenantId) {
