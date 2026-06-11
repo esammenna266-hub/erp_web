@@ -303,7 +303,9 @@ class MockQueryBuilder {
   }
 
   select(columns?: string, options?: { count?: string; head?: boolean }) {
-    this.action = 'select'
+    if (this.action !== 'insert' && this.action !== 'update') {
+      this.action = 'select'
+    }
     if (options?.count === 'exact' && options?.head === true) {
       this.isCountOnly = true
     }

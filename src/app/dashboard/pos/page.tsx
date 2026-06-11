@@ -36,6 +36,7 @@ export default function POSPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [branches, setBranches] = useState<Branch[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [companyName, setCompanyName] = useState('ERP SYSTEM')
   const [loading, setLoading] = useState(true)
   
   // Selection state
@@ -84,6 +85,30 @@ export default function POSPage() {
     // Auto-select first branch if available
     if (branchData && branchData.length > 0) {
       setSelectedBranch(branchData[0].name)
+    }
+
+    // Fetch active company name
+    try {
+      const { data: userData } = await supabase.auth.getUser()
+      if (userData?.user) {
+        const impId = typeof window !== 'undefined' ? localStorage.getItem('impersonated_tenant_id') : null
+        if (impId) {
+          const { data: tenant } = await supabase.from('tenants').select('name').eq('id', impId).single()
+          if (tenant?.name) {
+            setCompanyName(tenant.name)
+          }
+        } else {
+          const { data: profile } = await supabase.from('profiles').select('tenant_id').eq('email', userData.user.email).single()
+          if (profile?.tenant_id) {
+            const { data: tenant } = await supabase.from('tenants').select('name').eq('id', profile.tenant_id).single()
+            if (tenant?.name) {
+              setCompanyName(tenant.name)
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching company name:', e)
     }
     
     setLoading(false)
@@ -694,8 +719,8 @@ export default function POSPage() {
 
             {/* Printable Receipt Area */}
             <div id="receipt-print-area" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', fontSize: 12 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 'bold', margin: '0 0 4px 0' }}>ERP SYSTEM RECEIPT</h2>
-              <p style={{ margin: '0 0 10px 0', fontSize: 11, color: '#666' }}>نظام إدارة موارد المؤسسة</p>
+              <h2 style={{ fontSize: 18, fontWeight: 'bold', margin: '0 0 4px 0' }}>{companyName}</h2>
+              <p style={{ margin: '0 0 10px 0', fontSize: 11, color: '#666' }}>فاتورة مبيعات</p>
               
               <div style={{ width: '100%', borderTop: '1px dashed #111', margin: '10px 0' }} />
               
