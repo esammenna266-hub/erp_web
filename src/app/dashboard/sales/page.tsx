@@ -14,6 +14,8 @@ interface Sale {
   payment_method?: 'cash' | 'visa' | 'instapay'
   customer_name?: string
   customer_phone?: string
+  status?: 'completed' | 'returned'
+  items?: { product_id: string; product_name: string; quantity: number }[]
 }
 
 export default function SalesPage() {
@@ -83,7 +85,9 @@ export default function SalesPage() {
       notes: form.notes,
       payment_method: form.payment_method,
       customer_name: form.customer_name.trim() || null,
-      customer_phone: form.customer_phone.trim() || null
+      customer_phone: form.customer_phone.trim() || null,
+      status: 'completed',
+      items: []
     }
 
     if (editingId) {
@@ -102,6 +106,77 @@ export default function SalesPage() {
     if (!confirm('حذف هذه المبيعة؟')) return
     await supabase.from('sales').delete().eq('id', id)
     load()
+  }
+
+  async function handleReturn(sale: Sale) {
+    if (!sale.items || sale.items.length === 0) {
+      alert('لا توجد بيانات منتجات مسجلة في هذه الفاتورة لإعادتها للمخزن!')
+      return
+    }
+
+    if (!confirm(`هل تريد عمل مرتجع للفاتورة رقم (${sale.id}) بالكامل؟\nسيتم تصفير قيمتها المالية وإعادة البضائع للمخزن.`)) {
+      return
+    }
+
+    setLoading(true)
+    try {
+      // 1. Return items to products stock
+      const updatePromises = sale.items.map(async item => {
+        // Get current quantity
+        const { data: prod } = await supabase
+          .from('products')
+          .select('quantity')
+          .eq('id', item.product_id)
+          .single()
+
+        const currentQty = prod?.quantity ?? 0
+        const newQty = currentQty + item.quantity
+
+        // Update product quantity
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({ quantity: newQty })
+          .eq('id', item.product_id)
+
+        if (updateError) throw updateError
+
+        // 2. Log inventory movement as inbound
+        const { error: logError } = await supabase
+          .from('inventory_movements')
+          .insert({
+            product_id: item.product_id,
+            product_name: item.product_name,
+            type: 'inbound',
+            quantity: item.quantity,
+            branch: sale.branch,
+            notes: `مرتجع تلقائي للمبيعات - فاتورة رقم ${sale.id}`
+          })
+
+        if (logError) throw logError
+      })
+
+      await Promise.all(updatePromises)
+
+      // 3. Update sale status to 'returned' and set amount to 0
+      const { error: saleError } = await supabase
+        .from('sales')
+        .update({
+          status: 'returned',
+          amount: 0,
+          notes: (sale.notes || '') + '\n\n[تم عمل مرتجع بالكامل وإعادة المنتجات للمخازن]'
+        })
+        .eq('id', sale.id)
+
+      if (saleError) throw saleError
+
+      alert('تم إرجاع المنتجات وتحديث الحسابات بنجاح! 🎉')
+      await load()
+
+    } catch (e: any) {
+      alert(`حدث خطأ أثناء معالجة المرتجع: ${e.message}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -163,40 +238,54 @@ export default function SalesPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(sale => (
-                  <tr key={sale.id}>
-                    <td style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
-                      <div>{sale.customer_name || 'عام'}</div>
-                      {sale.customer_phone && <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{sale.customer_phone}</div>}
-                    </td>
-                    <td>{sale.employee_name}</td>
-                    <td>{sale.product ?? '—'}</td>
-                    <td>
-                      <span style={{
-                        padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
-                        background: sale.payment_method === 'cash' ? 'rgba(16, 185, 129, 0.1)' : sale.payment_method === 'visa' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(139, 92, 246, 0.1)',
-                        color: sale.payment_method === 'cash' ? '#34d399' : sale.payment_method === 'visa' ? '#60a5fa' : '#a78bfa'
-                      }}>
-                        {sale.payment_method === 'cash' ? 'كاش 💵' : sale.payment_method === 'visa' ? 'فيزا 💳' : 'انستا باي ⚡'}
-                      </span>
-                    </td>
-                    <td>{sale.branch ?? '—'}</td>
-                    <td>
-                      <span style={{ fontWeight: 700, color: 'var(--accent-emerald)', fontSize: 15 }}>
-                        {(sale.amount ?? 0).toLocaleString('ar-EG')} ج.م
-                      </span>
-                    </td>
-                    <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                      {new Date(sale.created_at).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })}
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button onClick={() => openEditModal(sale)} style={{ padding: '5px 10px', borderRadius: 6, background: 'rgba(91,110,245,0.1)', border: '1px solid rgba(91,110,245,0.2)', color: '#818cf8', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>تعديل</button>
-                        <button onClick={() => handleDelete(sale.id)} style={{ padding: '5px 10px', borderRadius: 6, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>حذف</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map(sale => {
+                  const isReturned = sale.status === 'returned'
+                  return (
+                    <tr key={sale.id} style={{ opacity: isReturned ? 0.65 : 1, background: isReturned ? 'rgba(239,68,68,0.02)' : 'none' }}>
+                      <td style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                        <div>{sale.customer_name || 'عام'}</div>
+                        {sale.customer_phone && <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{sale.customer_phone}</div>}
+                      </td>
+                      <td>{sale.employee_name}</td>
+                      <td>{sale.product ?? '—'}</td>
+                      <td>
+                        <span style={{
+                          padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                          background: sale.payment_method === 'cash' ? 'rgba(16, 185, 129, 0.1)' : sale.payment_method === 'visa' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(139, 92, 246, 0.1)',
+                          color: sale.payment_method === 'cash' ? '#34d399' : sale.payment_method === 'visa' ? '#60a5fa' : '#a78bfa'
+                        }}>
+                          {sale.payment_method === 'cash' ? 'كاش 💵' : sale.payment_method === 'visa' ? 'فيزا 💳' : 'انستا باي ⚡'}
+                        </span>
+                      </td>
+                      <td>{sale.branch ?? '—'}</td>
+                      <td>
+                        <span style={{ fontWeight: 700, color: isReturned ? 'var(--text-muted)' : 'var(--accent-emerald)', fontSize: 15, textDecoration: isReturned ? 'line-through' : 'none' }}>
+                          {(sale.amount ?? 0).toLocaleString('ar-EG')} ج.م
+                        </span>
+                      </td>
+                      <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        {new Date(sale.created_at).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {isReturned ? (
+                            <span style={{
+                              padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+                              background: 'rgba(239, 68, 68, 0.15)', color: '#f87171'
+                            }}>
+                              تم الإرجاع ❌
+                            </span>
+                          ) : (
+                            <>
+                              <button onClick={() => handleReturn(sale)} style={{ padding: '5px 10px', borderRadius: 6, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>عمل مرتجع ↩️</button>
+                              <button onClick={() => handleDelete(sale.id)} style={{ padding: '5px 10px', borderRadius: 6, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>حذف 🗑️</button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

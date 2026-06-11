@@ -171,6 +171,10 @@ const INITIAL_MOCK_DATA: Record<string, any[]> = {
       payment_method: "cash",
       customer_name: "علي عصام",
       customer_phone: "01001234567",
+      status: "completed",
+      items: [
+        { product_id: "p1", product_name: "شاشة سامسونج 55 بوصة Smart 4K", quantity: 1 }
+      ],
       created_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
     },
     {
@@ -184,6 +188,10 @@ const INITIAL_MOCK_DATA: Record<string, any[]> = {
       payment_method: "cash",
       customer_name: "أحمد حسام",
       customer_phone: "01112223334",
+      status: "completed",
+      items: [
+        { product_id: "p1", product_name: "شاشة سامسونج 55 بوصة Smart 4K", quantity: 1 }
+      ],
       created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     },
     {
@@ -197,6 +205,11 @@ const INITIAL_MOCK_DATA: Record<string, any[]> = {
       payment_method: "visa",
       customer_name: "مروان محمود",
       customer_phone: "01223334445",
+      status: "completed",
+      items: [
+        { product_id: "p2", product_name: "لابتوب ديل Vostro Core i7 16GB", quantity: 1 },
+        { product_id: "p5", product_name: "ماوس لاسلكي Logitech M170", quantity: 1 }
+      ],
       created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
     },
     {
@@ -210,6 +223,10 @@ const INITIAL_MOCK_DATA: Record<string, any[]> = {
       payment_method: "instapay",
       customer_name: "شريف علي",
       customer_phone: "01556667778",
+      status: "completed",
+      items: [
+        { product_id: "p3", product_name: "بن قهوة اسبريسو برازيلي 1 كجم", quantity: 20 }
+      ],
       created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
     },
     {
@@ -223,6 +240,10 @@ const INITIAL_MOCK_DATA: Record<string, any[]> = {
       payment_method: "visa",
       customer_name: "منى زكي",
       customer_phone: "01099988877",
+      status: "completed",
+      items: [
+        { product_id: "p2", product_name: "لابتوب ديل Vostro Core i7 16GB", quantity: 1 }
+      ],
       created_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
     },
     {
@@ -236,6 +257,11 @@ const INITIAL_MOCK_DATA: Record<string, any[]> = {
       payment_method: "cash",
       customer_name: "خالد يوسف",
       customer_phone: "01144455566",
+      status: "completed",
+      items: [
+        { product_id: "p1", product_name: "شاشة سامسونج 55 بوصة Smart 4K", quantity: 1 },
+        { product_id: "p5", product_name: "ماوس لاسلكي Logitech M170", quantity: 1 }
+      ],
       created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
     },
     {
@@ -249,6 +275,10 @@ const INITIAL_MOCK_DATA: Record<string, any[]> = {
       payment_method: "visa",
       customer_name: "جمال عبد الحميد",
       customer_phone: "01277766655",
+      status: "completed",
+      items: [
+        { product_id: "p2", product_name: "لابتوب ديل Vostro Core i7 16GB", quantity: 1 }
+      ],
       created_at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString()
     }
   ],

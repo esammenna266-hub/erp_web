@@ -267,7 +267,13 @@ export default function POSPage() {
         notes: detailedNotes,
         payment_method: paymentMethod,
         customer_name: customerName.trim() || null,
-        customer_phone: customerPhone.trim() || null
+        customer_phone: customerPhone.trim() || null,
+        status: 'completed',
+        items: cart.map(i => ({
+          product_id: i.product.id,
+          product_name: i.product.name,
+          quantity: i.quantity
+        }))
       }
 
       const { data: saleResult, error: saleError } = await supabase
@@ -529,7 +535,7 @@ export default function POSPage() {
         </div>
 
         {/* LEFT COLUMN: Shopping Cart Panel */}
-        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', padding: 20, maxHeight: 'calc(100vh - 200px)' }}>
+        <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', padding: 20, height: 'calc(100vh - 220px)', minHeight: '620px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: 12, marginBottom: 14 }}>
             <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
               🛒 السلة الحالية 
