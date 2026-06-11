@@ -102,11 +102,6 @@ export default function SalesPage() {
     load()
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('حذف هذه المبيعة؟')) return
-    await supabase.from('sales').delete().eq('id', id)
-    load()
-  }
 
   async function handleReturn(sale: Sale) {
     if (!sale.items || sale.items.length === 0) {
@@ -276,10 +271,7 @@ export default function SalesPage() {
                               تم الإرجاع ❌
                             </span>
                           ) : (
-                            <>
-                              <button onClick={() => handleReturn(sale)} style={{ padding: '5px 10px', borderRadius: 6, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>عمل مرتجع ↩️</button>
-                              <button onClick={() => handleDelete(sale.id)} style={{ padding: '5px 10px', borderRadius: 6, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>حذف 🗑️</button>
-                            </>
+                            <button onClick={() => handleReturn(sale)} style={{ padding: '5px 10px', borderRadius: 6, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>عمل مرتجع ↩️</button>
                           )}
                         </div>
                       </td>
