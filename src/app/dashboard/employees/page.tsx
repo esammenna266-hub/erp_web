@@ -28,6 +28,7 @@ export default function EmployeesPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [enableLogin, setEnableLogin] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', role: 'employee', branch: '', phone: '', salary: '', password: '' })
   const [error, setError] = useState('')
   const [branches, setBranches] = useState<{id:string, name:string}[]>([])
@@ -53,6 +54,7 @@ export default function EmployeesPage() {
   function openAddModal() {
     setEditingId(null)
     setForm({ name: '', email: '', role: 'employee', branch: '', phone: '', salary: '', password: 'demo' })
+    setEnableLogin(false)
     setError('')
     setShowPassword(false)
     setShowModal(true)
@@ -69,16 +71,32 @@ export default function EmployeesPage() {
     const { data: profile } = await supabase.from('profiles').select('password').eq('email', emp.email).single()
     if (profile && profile.password) {
       setForm(f => ({ ...f, password: profile.password }))
+      setEnableLogin(true)
+    } else {
+      setEnableLogin(false)
     }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.name.trim() || !form.email.trim()) { setError('الاسم والبريد مطلوبان'); return }
+    if (!form.name.trim()) { setError('الاسم الكامل مطلوب'); return }
+    if (enableLogin && !form.email.trim()) { setError('البريد الإلكتروني مطلوب لتفعيل حساب الدخول'); return }
     setSaving(true)
     setError('')
-    const targetEmail = form.email.trim().toLowerCase()
-    const payload = { name: form.name.trim(), email: targetEmail, role: form.role, branch: form.branch, phone: form.phone, salary: form.salary ? parseFloat(form.salary) : null }
+
+    // Auto-generate a dummy email if login is disabled to avoid unique constraints
+    const targetEmail = enableLogin 
+      ? form.email.trim().toLowerCase()
+      : (form.email.trim() && !form.email.includes('no-login-') ? form.email.trim().toLowerCase() : `no-login-${Math.random().toString(36).substring(2, 10)}@no-login.local`)
+
+    const payload = { 
+      name: form.name.trim(), 
+      email: targetEmail, 
+      role: form.role, 
+      branch: form.branch, 
+      phone: form.phone || null, 
+      salary: form.salary ? parseFloat(form.salary) : null 
+    }
 
     if (editingId) {
       // Get old email first to sync update
@@ -89,55 +107,59 @@ export default function EmployeesPage() {
 
       // Update matching profile if exists or create if not
       if (oldEmp) {
-        const { data: profile } = await supabase.from('profiles').select('id').eq('email', oldEmp.email).single()
-        if (profile) {
-          await supabase.from('profiles').update({
-            email: targetEmail,
-            role: form.role,
-            password: form.password || 'demo'
-          }).eq('email', oldEmp.email)
-        } else {
-          // If no profile existed, create one
-          const { data: authData } = await supabase.auth.getUser()
-          let activeTenantId = null
-          if (authData?.user) {
-            const { data: currentProfile } = await supabase.from('profiles').select('tenant_id').eq('email', authData.user.email).single()
-            activeTenantId = currentProfile?.tenant_id
+        if (enableLogin) {
+          const { data: profile } = await supabase.from('profiles').select('id').eq('email', oldEmp.email).single()
+          if (profile) {
+            await supabase.from('profiles').update({
+              email: targetEmail,
+              role: form.role,
+              password: form.password || 'demo'
+            }).eq('email', oldEmp.email)
+          } else {
+            const { data: authData } = await supabase.auth.getUser()
+            let activeTenantId = null
+            if (authData?.user) {
+              const { data: currentProfile } = await supabase.from('profiles').select('tenant_id').eq('email', authData.user.email).single()
+              activeTenantId = currentProfile?.tenant_id
+            }
+            await supabase.from('profiles').insert({
+              email: targetEmail,
+              tenant_id: activeTenantId,
+              role: form.role,
+              password: form.password || 'demo'
+            })
           }
-          await supabase.from('profiles').insert({
-            email: targetEmail,
-            tenant_id: activeTenantId,
-            role: form.role,
-            password: form.password || 'demo'
-          })
+        } else {
+          // If login is disabled, delete matching profile if exists
+          await supabase.from('profiles').delete().eq('email', oldEmp.email)
         }
       }
     } else {
       const { error } = await supabase.from('employees').insert(payload)
       if (error) { setError(error.message); setSaving(false); return }
 
-      // Get current logged-in user's tenant_id to assign it to employee
-      const { data: authData } = await supabase.auth.getUser()
-      if (authData?.user) {
-        const { data: currentProfile } = await supabase.from('profiles').select('tenant_id').eq('email', authData.user.email).single()
-        const activeTenantId = currentProfile?.tenant_id
+      if (enableLogin) {
+        // Get current logged-in user's tenant_id to assign it to employee
+        const { data: authData } = await supabase.auth.getUser()
+        if (authData?.user) {
+          const { data: currentProfile } = await supabase.from('profiles').select('tenant_id').eq('email', authData.user.email).single()
+          const activeTenantId = currentProfile?.tenant_id
 
-        // Create profile so they can log in
-        const { data: existingProfile } = await supabase.from('profiles').select('id').eq('email', targetEmail).single()
-        if (!existingProfile) {
-          await supabase.from('profiles').insert({
-            email: targetEmail,
-            tenant_id: activeTenantId,
-            role: form.role,
-            password: form.password || 'demo'
-          })
-        } else {
-          // If it exists, update it with tenant_id, role, and password
-          await supabase.from('profiles').update({
-            tenant_id: activeTenantId,
-            role: form.role,
-            password: form.password || 'demo'
-          }).eq('email', targetEmail)
+          const { data: existingProfile } = await supabase.from('profiles').select('id').eq('email', targetEmail).single()
+          if (!existingProfile) {
+            await supabase.from('profiles').insert({
+              email: targetEmail,
+              tenant_id: activeTenantId,
+              role: form.role,
+              password: form.password || 'demo'
+            })
+          } else {
+            await supabase.from('profiles').update({
+              tenant_id: activeTenantId,
+              role: form.role,
+              password: form.password || 'demo'
+            }).eq('email', targetEmail)
+          }
         }
       }
     }
@@ -271,113 +293,41 @@ export default function EmployeesPage() {
             {error && <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#f87171', marginBottom: 16 }}>{error}</div>}
             <form onSubmit={handleSubmit}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                {[
-                  { id:'emp-name', label: 'الاسم الكامل', key: 'name', type: 'text', placeholder: 'محمد أحمد' },
-                  { id:'emp-email', label: 'البريد الإلكتروني', key: 'email', type: 'email', placeholder: 'email@company.com' },
-                  { id:'emp-phone', label: 'رقم الهاتف', key: 'phone', type: 'tel', placeholder: '01xxxxxxxxx' },
-                  { id:'emp-salary', label: 'الراتب (ج.م)', key: 'salary', type: 'number', placeholder: '5000' },
-                ].map(field => (
-                  <div key={field.key}>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>{field.label}</label>
-                    <input
-                      id={field.id}
-                      type={field.type}
-                      placeholder={field.placeholder}
-                      value={(form as Record<string, string>)[field.key]}
-                      onChange={e => setForm(f => ({ ...f, [field.key]: e.target.value }))}
-                      className="input-field"
-                      style={{ padding: '10px 12px' }}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ marginTop: 14 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>كلمة المرور</label>
-                <div style={{ position: 'relative', display: 'flex', gap: 8 }}>
-                  <div style={{ position: 'relative', flex: 1 }}>
-                    <input
-                      id="emp-password"
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="كلمة مرور حساب الموظف"
-                      value={form.password}
-                      onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                      className="input-field"
-                      style={{ padding: '10px 40px 10px 12px' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      style={{
-                        position: 'absolute',
-                        right: 12,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--text-muted)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: 0
-                      }}
-                    >
-                      {showPassword ? (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                          <line x1="1" y1="1" x2="23" y2="23"></line>
-                        </svg>
-                      ) : (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                          <circle cx="12" cy="12" r="3"></circle>
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-                      let randPass = ''
-                      for (let i = 0; i < 8; i++) {
-                        randPass += chars.charAt(Math.floor(Math.random() * chars.length))
-                      }
-                      setForm(f => ({ ...f, password: randPass }))
-                      setShowPassword(true)
-                    }}
-                    style={{
-                      padding: '10px 14px',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 'var(--radius)',
-                      color: 'var(--text-primary)',
-                      cursor: 'pointer',
-                      fontSize: 12,
-                      fontWeight: 500,
-                      whiteSpace: 'nowrap',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseOver={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
-                    onMouseOut={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
-                  >
-                    توليد كلمة مرور
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>الدور</label>
-                  <select
-                    id="emp-role"
-                    value={form.role}
-                    onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-                    style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-primary)', fontSize: 14, outline: 'none', width: '100%' }}
-                  >
-                    {ROLE_OPTIONS.map(r => <option key={r} value={r}>{roleLabel[r]}</option>)}
-                  </select>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>الاسم الكامل</label>
+                  <input
+                    id="emp-name"
+                    type="text"
+                    placeholder="محمد أحمد"
+                    value={form.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    className="input-field"
+                    style={{ padding: '10px 12px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>رقم الهاتف</label>
+                  <input
+                    id="emp-phone"
+                    type="tel"
+                    placeholder="01xxxxxxxxx"
+                    value={form.phone}
+                    onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                    className="input-field"
+                    style={{ padding: '10px 12px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>الراتب (ج.م)</label>
+                  <input
+                    id="emp-salary"
+                    type="number"
+                    placeholder="5000"
+                    value={form.salary}
+                    onChange={e => setForm(f => ({ ...f, salary: e.target.value }))}
+                    className="input-field"
+                    style={{ padding: '10px 12px' }}
+                  />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>الفرع</label>
@@ -391,6 +341,119 @@ export default function EmployeesPage() {
                     {branches.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
                   </select>
                 </div>
+
+                {/* Enable Login Toggle */}
+                <div style={{ gridColumn: 'span 2', padding: '12px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginTop: 8 }} onClick={() => setEnableLogin(!enableLogin)}>
+                  <input
+                    type="checkbox"
+                    checked={enableLogin}
+                    onChange={(e) => setEnableLogin(e.target.checked)}
+                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--accent-blue)' }}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>تمكين تسجيل الدخول للنظام (حساب مستخدم)</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>قم بالتفعيل إذا كان الموظف يحتاج إلى تسجيل مبيعات، حضور، أو إدارة الحسابات بنفسه.</div>
+                  </div>
+                </div>
+
+                {enableLogin && (
+                  <>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>البريد الإلكتروني</label>
+                      <input
+                        id="emp-email"
+                        type="email"
+                        placeholder="email@company.com"
+                        value={form.email.includes('no-login-') ? '' : form.email}
+                        onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                        className="input-field"
+                        style={{ padding: '10px 12px' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>الدور والصلاحيات</label>
+                      <select
+                        id="emp-role"
+                        value={form.role}
+                        onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
+                        style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-primary)', fontSize: 14, outline: 'none', width: '100%' }}
+                      >
+                        {ROLE_OPTIONS.map(r => <option key={r} value={r}>{roleLabel[r]}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>كلمة المرور</label>
+                      <div style={{ position: 'relative', display: 'flex', gap: 8 }}>
+                        <div style={{ position: 'relative', flex: 1 }}>
+                          <input
+                            id="emp-password"
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="كلمة مرور حساب الموظف"
+                            value={form.password}
+                            onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                            className="input-field"
+                            style={{ padding: '10px 40px 10px 12px' }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            style={{
+                              position: 'absolute',
+                              right: 12,
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              background: 'none',
+                              border: 'none',
+                              color: 'var(--text-muted)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: 0
+                            }}
+                          >
+                            {showPassword ? (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                              </svg>
+                            ) : (
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+                            let randPass = ''
+                            for (let i = 0; i < 8; i++) {
+                              randPass += chars.charAt(Math.floor(Math.random() * chars.length))
+                            }
+                            setForm(f => ({ ...f, password: randPass }))
+                            setShowPassword(true)
+                          }}
+                          style={{
+                            padding: '10px 14px',
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid var(--border)',
+                            borderRadius: 'var(--radius)',
+                            color: 'var(--text-primary)',
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            fontWeight: 500,
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          توليد
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
                 <button type="button" onClick={() => setShowModal(false)} style={{ flex: 1, padding: '11px', borderRadius: 'var(--radius)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>إلغاء</button>

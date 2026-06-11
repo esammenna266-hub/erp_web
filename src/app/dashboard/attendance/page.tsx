@@ -30,14 +30,22 @@ export default function AttendancePage() {
   const [form, setForm] = useState({ employee_name: '', branch: '', date: new Date().toISOString().split('T')[0], check_in: '', check_out: '', status: 'present', notes: '' })
   const [error, setError] = useState('')
   const [branches, setBranches] = useState<{id:string, name:string}[]>([])
+  const [employees, setEmployees] = useState<{id:string, name:string, branch:string}[]>([])
 
   const load = useCallback(async () => {
     setLoading(true)
-    const query = supabase.from('attendance').select('*').order('date', { ascending: false }).order('check_in', { ascending: false })
-    const { data, data: bData } = await query
-    const { data: branchData } = await supabase.from('branches').select('id, name')
-    setRecords(data ?? [])
+    const [
+      { data: attData },
+      { data: branchData },
+      { data: empData }
+    ] = await Promise.all([
+      supabase.from('attendance').select('*').order('date', { ascending: false }).order('check_in', { ascending: false }),
+      supabase.from('branches').select('id, name'),
+      supabase.from('employees').select('id, name, branch')
+    ])
+    setRecords(attData ?? [])
     setBranches(branchData ?? [])
+    setEmployees(empData ?? [])
     setLoading(false)
   }, [])
 
@@ -228,7 +236,18 @@ export default function AttendancePage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>اسم الموظف</label>
-                  <input id="att-employee" type="text" placeholder="محمد أحمد" value={form.employee_name} onChange={e => setForm(f => ({ ...f, employee_name: e.target.value }))} className="input-field" style={{ padding: '10px 12px' }} />
+                  <select
+                    id="att-employee"
+                    value={form.employee_name}
+                    onChange={e => {
+                      const emp = employees.find(x => x.name === e.target.value)
+                      setForm(f => ({ ...f, employee_name: e.target.value, branch: emp?.branch || f.branch }))
+                    }}
+                    style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-primary)', fontSize: 14, outline: 'none', width: '100%' }}
+                  >
+                    <option value="">اختر الموظف</option>
+                    {employees.map(emp => <option key={emp.id} value={emp.name}>{emp.name}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>التاريخ</label>
