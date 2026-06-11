@@ -168,6 +168,9 @@ const INITIAL_MOCK_DATA: Record<string, any[]> = {
       amount: 13500,
       product: "شاشة سامسونج 55 بوصة Smart 4K",
       notes: "فاتورة مبيعات نقدية",
+      payment_method: "cash",
+      customer_name: "علي عصام",
+      customer_phone: "01001234567",
       created_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
     },
     {
@@ -178,6 +181,9 @@ const INITIAL_MOCK_DATA: Record<string, any[]> = {
       amount: 8000,
       product: "شاشة سامسونج 55 بوصة Smart 4K",
       notes: "عملية بيع POS كاش",
+      payment_method: "cash",
+      customer_name: "أحمد حسام",
+      customer_phone: "01112223334",
       created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     },
     {
@@ -188,6 +194,9 @@ const INITIAL_MOCK_DATA: Record<string, any[]> = {
       amount: 24380,
       product: "لابتوب ديل Vostro Core i7 16GB، ماوس لاسلكي Logitech M170",
       notes: "مبيعات للفرع بالفيزا",
+      payment_method: "visa",
+      customer_name: "مروان محمود",
+      customer_phone: "01223334445",
       created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
     },
     {
@@ -198,6 +207,9 @@ const INITIAL_MOCK_DATA: Record<string, any[]> = {
       amount: 9600,
       product: "بن قهوة اسبريسو برازيلي 1 كجم (عدد 20)",
       notes: "",
+      payment_method: "instapay",
+      customer_name: "شريف علي",
+      customer_phone: "01556667778",
       created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
     },
     {
@@ -208,6 +220,9 @@ const INITIAL_MOCK_DATA: Record<string, any[]> = {
       amount: 24000,
       product: "لابتوب ديل Vostro Core i7 16GB",
       notes: "دفع فيزا شحن مباشر",
+      payment_method: "visa",
+      customer_name: "منى زكي",
+      customer_phone: "01099988877",
       created_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
     },
     {
@@ -218,6 +233,9 @@ const INITIAL_MOCK_DATA: Record<string, any[]> = {
       amount: 13880,
       product: "شاشة سامسونج 55 بوصة Smart 4K، ماوس لاسلكي Logitech M170",
       notes: "",
+      payment_method: "cash",
+      customer_name: "خالد يوسف",
+      customer_phone: "01144455566",
       created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
     },
     {
@@ -228,6 +246,9 @@ const INITIAL_MOCK_DATA: Record<string, any[]> = {
       amount: 24000,
       product: "لابتوب ديل Vostro Core i7 16GB",
       notes: "",
+      payment_method: "visa",
+      customer_name: "جمال عبد الحميد",
+      customer_phone: "01277766655",
       created_at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString()
     }
   ],
@@ -246,6 +267,13 @@ const INITIAL_MOCK_DATA: Record<string, any[]> = {
     { id: "im2", tenant_id: "t1", product_id: "p2", product_name: "لابتوب ديل Vostro Core i7 16GB", type: "inbound", quantity: 4, branch: "فرع الإسكندرية", notes: "رصيد افتتاحي للمخزن", created_at: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString() },
     { id: "im3", tenant_id: "t1", product_id: "p3", product_name: "بن قهوة اسبريسو برازيلي 1 كجم", type: "inbound", quantity: 30, branch: "فرع القاهرة - الرئيسي", notes: "توريد من المورد الأساسي", created_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString() },
     { id: "im4", tenant_id: "t1", product_id: "p3", product_name: "بن قهوة اسبريسو برازيلي 1 كجم", type: "outbound", quantity: 5.5, branch: "فرع القاهرة - الرئيسي", notes: "هالك / تالف بسبب سوء التخزين", created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() }
+  ],
+  expenses: [
+    { id: "ex1", tenant_id: "t1", title: "فاتورة كهرباء فرع القاهرة", category: "فواتير", amount: 1200, branch: "فرع القاهرة - الرئيسي", employee_name: "منة أحمد", notes: "كهرباء شهر مايو", created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() },
+    { id: "ex2", tenant_id: "t1", title: "صيانة أجهزة التكييف", category: "صيانة", amount: 850, branch: "فرع الإسكندرية", employee_name: "سارة علي", notes: "صيانة دورية", created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() }
+  ],
+  employee_draws: [
+    { id: "dr1", tenant_id: "t1", employee_name: "عمرو حسن", amount: 1500, date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], status: "approved", notes: "سلفة طارئة", created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() }
   ]
 }
 
@@ -360,7 +388,7 @@ class MockQueryBuilder {
       let filtered = [...data]
       
       // Auto-filter tenant-specific data
-      const tenantSpecificTables = ['branches', 'employees', 'products', 'sales', 'attendance', 'inventory_movements']
+      const tenantSpecificTables = ['branches', 'employees', 'products', 'sales', 'attendance', 'inventory_movements', 'expenses', 'employee_draws']
       if (tenantSpecificTables.includes(this.table)) {
         const activeTenantId = getActiveTenantId()
         if (activeTenantId) {

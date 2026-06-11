@@ -49,6 +49,10 @@ export default function POSPage() {
   const [discount, setDiscount] = useState('')
   const [notes, setNotes] = useState('')
   
+  const [customerName, setCustomerName] = useState('')
+  const [customerPhone, setCustomerPhone] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'visa' | 'instapay'>('cash')
+  
   // Action states
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -63,6 +67,9 @@ export default function POSPage() {
     discountAmount: number
     total: number
     notes?: string
+    paymentMethod: string
+    customerName?: string
+    customerPhone?: string
   } | null>(null)
 
   // Load data
@@ -203,6 +210,9 @@ export default function POSPage() {
     setDiscount('')
     setNotes('')
     setError('')
+    setCustomerName('')
+    setCustomerPhone('')
+    setPaymentMethod('cash')
   }
 
   // Calculate totals
@@ -246,7 +256,7 @@ export default function POSPage() {
         return `- ${item.product.name} [${item.product.barcode ?? 'بدون باركود'}]: ${item.quantity} ${item.product.unit_type === 'piece' ? 'قطعة' : 'كجم'} × ${itemPrice.toLocaleString('ar-EG')} ج.م = ${itemTotal.toLocaleString('ar-EG')} ج.م`
       }).join('\n')
       
-      const detailedNotes = `فاتورة تفصيلية لنقطة البيع (POS):\n\nالمنتجات المباعة:\n${itemsList}\n\nإجمالي الفاتورة: ${subtotal.toLocaleString('ar-EG')} ج.م\nالخصم: ${discountVal}%\nالصافي النهائي: ${total.toLocaleString('ar-EG')} ج.م\n\nالكاشير المسؤول: ${selectedEmployee}\n\n${notes ? `ملاحظات إضافية: ${notes}` : ''}`
+      const detailedNotes = `فاتورة تفصيلية لنقطة البيع (POS):\n\nالمنتجات المباعة:\n${itemsList}\n\nإجمالي الفاتورة: ${subtotal.toLocaleString('ar-EG')} ج.م\nالخصم: ${discountVal}%\nالصافي النهائي: ${total.toLocaleString('ar-EG')} ج.م\n\nالكاشير المسؤول: ${selectedEmployee}\n\nطريقة الدفع: ${paymentMethod === 'cash' ? 'كاش' : paymentMethod === 'visa' ? 'فيزا' : 'انستا باي'}\nالعميل: ${customerName || 'عام'}\n\n${notes ? `ملاحظات إضافية: ${notes}` : ''}`
 
       // 2. Insert record into `sales` table
       const salePayload = {
@@ -255,6 +265,9 @@ export default function POSPage() {
         amount: total,
         product: cart.map(i => i.product.name).join('، '),
         notes: detailedNotes,
+        payment_method: paymentMethod,
+        customer_name: customerName.trim() || null,
+        customer_phone: customerPhone.trim() || null
       }
 
       const { data: saleResult, error: saleError } = await supabase
@@ -294,7 +307,10 @@ export default function POSPage() {
         discountPercent: discountVal,
         discountAmount,
         total,
-        notes: notes
+        notes: notes,
+        paymentMethod,
+        customerName: customerName.trim() || undefined,
+        customerPhone: customerPhone.trim() || undefined
       })
 
       // 5. Reload products data & Clear Cart
@@ -648,6 +664,57 @@ export default function POSPage() {
               </span>
             </div>
 
+            {/* Customer Information */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>اسم العميل:</span>
+                <input
+                  id="pos-customer-name"
+                  placeholder="اسم العميل"
+                  value={customerName}
+                  onChange={e => setCustomerName(e.target.value)}
+                  className="input-field"
+                  style={{ padding: '6px 10px', fontSize: 12, marginTop: 4 }}
+                />
+              </div>
+              <div>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>رقم الموبايل:</span>
+                <input
+                  id="pos-customer-phone"
+                  placeholder="01xxxxxxxxx"
+                  value={customerPhone}
+                  onChange={e => setCustomerPhone(e.target.value)}
+                  className="input-field"
+                  style={{ padding: '6px 10px', fontSize: 12, marginTop: 4 }}
+                />
+              </div>
+            </div>
+
+            {/* Payment Method Selector */}
+            <div>
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>طريقة الدفع:</span>
+              <div style={{ display: 'flex', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 3, gap: 4 }}>
+                {(['cash', 'visa', 'instapay'] as const).map(method => {
+                  const label = method === 'cash' ? '💵 كاش' : method === 'visa' ? '💳 فيزا' : '⚡ انستا باي'
+                  const active = paymentMethod === method
+                  return (
+                    <button
+                      key={method}
+                      type="button"
+                      onClick={() => setPaymentMethod(method)}
+                      style={{
+                        flex: 1, padding: '8px 4px', fontSize: 12, fontWeight: 600, border: 'none', borderRadius: 8,
+                        background: active ? 'linear-gradient(135deg, var(--accent-blue), var(--accent-purple))' : 'none',
+                        color: active ? 'white' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.15s'
+                      }}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
             {/* Notes input */}
             <div>
               <input
@@ -730,6 +797,9 @@ export default function POSPage() {
                 <div><strong>التاريخ:</strong> {successReceipt.date}</div>
                 <div><strong>الفرع:</strong> {successReceipt.branch}</div>
                 <div><strong>الكاشير:</strong> {successReceipt.employee}</div>
+                <div><strong>طريقة الدفع:</strong> {successReceipt.paymentMethod === 'cash' ? 'كاش 💵' : successReceipt.paymentMethod === 'visa' ? 'فيزا 💳' : 'انستا باي ⚡'}</div>
+                {successReceipt.customerName && <div><strong>العميل:</strong> {successReceipt.customerName}</div>}
+                {successReceipt.customerPhone && <div><strong>تليفون العميل:</strong> {successReceipt.customerPhone}</div>}
               </div>
 
               <div style={{ width: '100%', borderTop: '1px dashed #111', margin: '10px 0' }} />

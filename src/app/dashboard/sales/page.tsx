@@ -11,6 +11,9 @@ interface Sale {
   product?: string
   notes?: string
   created_at: string
+  payment_method?: 'cash' | 'visa' | 'instapay'
+  customer_name?: string
+  customer_phone?: string
 }
 
 export default function SalesPage() {
@@ -20,7 +23,7 @@ export default function SalesPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ employee_name: '', branch: '', amount: '', product: '', notes: '' })
+  const [form, setForm] = useState({ employee_name: '', branch: '', amount: '', product: '', notes: '', payment_method: 'cash', customer_name: '', customer_phone: '' })
   const [error, setError] = useState('')
   const [branches, setBranches] = useState<{id:string, name:string}[]>([])
 
@@ -47,7 +50,7 @@ export default function SalesPage() {
 
   function openAddModal() {
     setEditingId(null)
-    setForm({ employee_name: '', branch: '', amount: '', product: '', notes: '' })
+    setForm({ employee_name: '', branch: '', amount: '', product: '', notes: '', payment_method: 'cash', customer_name: '', customer_phone: '' })
     setError('')
     setShowModal(true)
   }
@@ -59,7 +62,10 @@ export default function SalesPage() {
       branch: sale.branch ?? '', 
       amount: sale.amount?.toString() ?? '', 
       product: sale.product ?? '', 
-      notes: sale.notes ?? '' 
+      notes: sale.notes ?? '',
+      payment_method: sale.payment_method ?? 'cash',
+      customer_name: sale.customer_name ?? '',
+      customer_phone: sale.customer_phone ?? ''
     })
     setError('')
     setShowModal(true)
@@ -75,6 +81,9 @@ export default function SalesPage() {
       amount: parseFloat(form.amount),
       product: form.product,
       notes: form.notes,
+      payment_method: form.payment_method,
+      customer_name: form.customer_name.trim() || null,
+      customer_phone: form.customer_phone.trim() || null
     }
 
     if (editingId) {
@@ -143,8 +152,10 @@ export default function SalesPage() {
             <table className="data-table">
               <thead>
                 <tr>
+                  <th>العميل</th>
                   <th>الموظف</th>
                   <th>المنتج</th>
+                  <th>طريقة الدفع</th>
                   <th>الفرع</th>
                   <th>المبلغ</th>
                   <th>التاريخ</th>
@@ -154,8 +165,21 @@ export default function SalesPage() {
               <tbody>
                 {filtered.map(sale => (
                   <tr key={sale.id}>
-                    <td style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{sale.employee_name}</td>
+                    <td style={{ fontWeight: 500, color: 'var(--text-primary)' }}>
+                      <div>{sale.customer_name || 'عام'}</div>
+                      {sale.customer_phone && <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{sale.customer_phone}</div>}
+                    </td>
+                    <td>{sale.employee_name}</td>
                     <td>{sale.product ?? '—'}</td>
+                    <td>
+                      <span style={{
+                        padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                        background: sale.payment_method === 'cash' ? 'rgba(16, 185, 129, 0.1)' : sale.payment_method === 'visa' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(139, 92, 246, 0.1)',
+                        color: sale.payment_method === 'cash' ? '#34d399' : sale.payment_method === 'visa' ? '#60a5fa' : '#a78bfa'
+                      }}>
+                        {sale.payment_method === 'cash' ? 'كاش 💵' : sale.payment_method === 'visa' ? 'فيزا 💳' : 'انستا باي ⚡'}
+                      </span>
+                    </td>
                     <td>{sale.branch ?? '—'}</td>
                     <td>
                       <span style={{ fontWeight: 700, color: 'var(--accent-emerald)', fontSize: 15 }}>
@@ -209,6 +233,22 @@ export default function SalesPage() {
                   <select id="sale-branch" value={form.branch} onChange={e => setForm(f => ({ ...f, branch: e.target.value }))} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-primary)', fontSize: 14, outline: 'none', width: '100%' }}>
                     <option value="">اختر الفرع</option>
                     {branches.map(b => <option key={b.id} value={b.name}>{b.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>اسم العميل</label>
+                  <input id="sale-customer-name" type="text" placeholder="اسم العميل" value={form.customer_name} onChange={e => setForm(f => ({ ...f, customer_name: e.target.value }))} className="input-field" style={{ padding: '10px 12px' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>رقم العميل</label>
+                  <input id="sale-customer-phone" type="text" placeholder="01xxxxxxxxx" value={form.customer_phone} onChange={e => setForm(f => ({ ...f, customer_phone: e.target.value }))} className="input-field" style={{ padding: '10px 12px' }} />
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 6 }}>طريقة الدفع</label>
+                  <select id="sale-payment-method" value={form.payment_method} onChange={e => setForm(f => ({ ...f, payment_method: e.target.value }))} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', color: 'var(--text-primary)', fontSize: 14, outline: 'none', width: '100%' }}>
+                    <option value="cash">كاش 💵</option>
+                    <option value="visa">فيزا 💳</option>
+                    <option value="instapay">انستا باي ⚡</option>
                   </select>
                 </div>
               </div>
